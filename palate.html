@@ -379,7 +379,7 @@
 
   <section id="sec-round">
     <h2>Round <span class="cn">· 这一轮</span></h2>
-    <div class="chips sm" id="session-chips" role="tablist" aria-label="轮次"></div>
+    <div class="chips sm" id="session-chips" role="group" aria-label="轮次"></div>
     <div class="field">
       <label for="title">Title <span class="cn">· 名字</span></label>
       <input type="text" id="title" placeholder="给这一轮起个名字，比如：道歉信、冷通知、把这段话说短">
@@ -671,7 +671,11 @@
   }
   function cardEl(id) {
     var cards = document.querySelectorAll('.card');
-    for (var i = 0; i < cards.length; i++) if (cards[i].dataset.id === id) return cards[i];
+    for (var i = 0; i < cards.length; i++) {
+      if (cards[i].dataset.id !== id) continue;
+      if (cards[i].closest('[hidden]')) continue;
+      return cards[i];
+    }
     return null;
   }
   function masked(s) { return !!(s.blind && !s.revealed); }
@@ -815,7 +819,6 @@
         b.textContent = label;
       }
       if (reader.on && i === reader.at) b.className += ' selected';
-      if (complete(m) && !(reader.on && i === reader.at)) setCls(b, 'selected', false);
       box.appendChild(b);
     });
   }
@@ -823,10 +826,11 @@
   function dimsHTML() {
     return DIMS.map(function (d) {
       var marks = [1, 2, 3, 4, 5].map(function (n) {
-        return '<button type="button" class="mark" data-n="' + n + '" role="radio" aria-checked="false" title="' +
+        return '<button type="button" class="mark" data-n="' + n + '" aria-pressed="false" aria-label="' +
+          d.cn + ' ' + n + ' ' + SCALE[n] + '" title="' +
           d.cn + ' · ' + n + ' ' + SCALE[n] + '">' + n + '</button>';
       }).join('');
-      return '<div class="dim" data-dim="' + d.id + '" role="radiogroup" aria-label="' + d.cn + '">' +
+      return '<div class="dim" data-dim="' + d.id + '" role="group" aria-label="' + d.cn + '">' +
         '<div class="dim-k">' + d.cn + '<span class="en">' + d.en + '</span></div>' +
         '<div class="marks">' + marks + '</div></div>';
     }).join('');
@@ -840,7 +844,7 @@
         var on = v > 0 && n <= v;
         setCls(btn, 'on', on);
         setCls(btn, 'cap', n === v && v > 0);
-        btn.setAttribute('aria-checked', n === v && v > 0 ? 'true' : 'false');
+        btn.setAttribute('aria-pressed', n === v && v > 0 ? 'true' : 'false');
       });
     });
     var avg = avgOf(m);
@@ -858,7 +862,7 @@
     var card = ta.closest('.card');
     if (card && card.classList.contains('tall')) { ta.style.height = ''; return; }
     ta.style.height = 'auto';
-    var max = Math.round(window.innerHeight * 0.46);
+    var max = Math.max(Math.round(window.innerHeight * 0.46), 220); // 软键盘会把 innerHeight 压小，下限兜住
     var h = Math.max(ta.scrollHeight, 136);
     ta.style.height = Math.min(h, max) + 'px';
   }
@@ -919,6 +923,7 @@
     var host = $('samples');
     host.hidden = false;
     $('reader').hidden = true;
+    $('reader-host').innerHTML = '';
     host.innerHTML = '';
     var list = seatedOrdered(s);
     if (!list.length) {
@@ -1756,6 +1761,7 @@
     if (t.id === 'prompt') {
       s.prompt = t.value;
       $('prompt-len').textContent = t.value.trim() ? (chars(t.value) + ' 字') : '';
+      queueBoard();
       save();
       return;
     }
